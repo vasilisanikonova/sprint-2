@@ -1,0 +1,173 @@
+name: sharding-repl-cache
+
+services:
+
+  configServer:
+    image: mongo:latest # docker образ
+    container_name: configServer
+    restart: always
+    networks:
+      app-network:
+        ipv4_address: 173.18.0.20
+    volumes:
+      - config-data:/data/db
+    command: --configsvr --replSet config_server --bind_ip_all --port 27017
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  mongos_router1:
+    image: mongo:latest
+    container_name: mongos_router1
+    restart: always
+    networks:
+      app-network:
+        ipv4_address: 173.18.0.23
+    command: mongos --configdb config_server/configServer:27017 --bind_ip_all --port 27017
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  repl11:
+    image: mongo:latest # docker образ
+    container_name: repl11
+    restart: always
+    networks:
+      app-network:
+        ipv4_address: 173.18.0.24
+    volumes:
+      - repl11-data:/data/db
+    command: --shardsvr --replSet rs0 --bind_ip_all --port 27017
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  repl12:
+    image: mongo:latest # docker образ
+    container_name: repl12
+    restart: always
+    networks:
+      app-network:
+        ipv4_address: 173.18.0.25
+    volumes:
+      - repl12-data:/data/db
+    command: --shardsvr --replSet rs0 --bind_ip_all --port 27017
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  repl13:
+    image: mongo:latest # docker образ
+    container_name: repl13
+    restart: always
+    networks:
+      app-network:
+        ipv4_address: 173.18.0.26
+    volumes:
+      - repl13-data:/data/db
+    command: --shardsvr --replSet rs0 --bind_ip_all --port 27017
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  repl21:
+    image: mongo:latest # docker образ
+    container_name: repl21
+    restart: always
+    networks:
+      app-network:
+        ipv4_address: 173.18.0.27
+    volumes:
+      - repl21-data:/data/db
+    command: --shardsvr --replSet rs1 --bind_ip_all --port 27017
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  repl22:
+    image: mongo:latest # docker образ
+    container_name: repl22
+    restart: always
+    networks:
+      app-network:
+        ipv4_address: 173.18.0.28
+    volumes:
+      - repl22-data:/data/db
+    command: --shardsvr --replSet rs1 --bind_ip_all --port 27017
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  repl23:
+    image: mongo:latest # docker образ
+    container_name: repl23
+    restart: always
+    networks:
+      app-network:
+        ipv4_address: 173.18.0.29
+    volumes:
+      - repl23-data:/data/db
+    command: --shardsvr --replSet rs1 --bind_ip_all --port 27017
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  redis_1:
+    image: "redis:latest"
+    container_name: redis_1
+    ports:
+      - "6379"
+    networks:
+      app-network:
+        ipv4_address: 173.18.0.2
+
+  pymongoApi:
+    container_name: pymongoApi
+    build:
+      context: api_app
+      dockerfile: Dockerfile
+    image: kazhem/pymongo_api:1.0.0
+    networks:
+      app-network:
+        ipv4_address: 173.18.0.30
+    depends_on:
+      - configServer
+      - mongos_router1
+      - repl11
+      - repl12
+      - repl13
+      - repl21
+      - repl22
+      - repl23
+      - redis_1
+    ports:
+      - 8080:8080
+    environment:
+      MONGODB_URL: "mongodb://mongos_router1"
+      MONGODB_DATABASE_NAME: "somedb"
+      REDIS_URL: "redis://redis_1:6379"
+      networks:
+  app-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 173.18.0.0/16
+
+volumes:
+  config-data:
+  repl11-data:
+  repl12-data:
+  repl13-data:
+  repl21-data:
+  repl22-data:
+  repl23-data:
+  redis_1_data: {}
